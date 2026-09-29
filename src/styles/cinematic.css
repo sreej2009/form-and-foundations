@@ -1,0 +1,565 @@
+/* ------------------------------------------------------------------ tokens */
+
+:root {
+  --ink: #f5f3ee;
+  --bg: #090909;
+  --muted: #8c8c8c;
+  --rule: rgba(245, 243, 238, 0.14);
+
+  --font-sans: 'Geist', 'Inter', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --gutter: clamp(20px, 3.2vw, 48px);
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+
+  /* Mobile browser chrome: keep UI above the toolbar while the film fills the large viewport. */
+  --safe-bottom: 0px;
+
+  /* Keeps small type legible over bright frames without a visible box. */
+  --halo: 0 0 18px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+@supports (height: 100lvh) {
+  :root {
+    --safe-bottom: calc(100lvh - 100svh);
+  }
+}
+
+/* -------------------------------------------------------------------- base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* --------------------------------------------------------------- cinematic */
+
+.cinematic {
+  position: relative;
+  background: var(--bg);
+}
+
+.cinematic__viewport {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* parallax (page scroll after unpin) > drift (pointer) > media (master timeline).
+   Each layer has a single owner, so no two animations fight over a transform. */
+.cinematic__parallax,
+.cinematic__drift,
+.cinematic__media {
+  position: absolute;
+  inset: 0;
+}
+
+.cinematic__media {
+  will-change: transform;
+}
+
+.cinematic__video,
+.cinematic__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cinematic__video {
+  object-fit: cover;
+  /* Tune to keep the building in frame when the crop gets tight. */
+  object-position: var(--focus, 50% 50%);
+  opacity: 0;
+  transition: opacity 1.8s var(--ease);
+  pointer-events: none;
+}
+
+.cinematic__video.is-ready {
+  opacity: 1;
+}
+
+.cinematic__canvas {
+  animation: fade-in 2s var(--ease) both;
+}
+
+.cinematic__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 95% at 58% 46%, transparent 52%, rgba(0, 0, 0, 0.55) 100%),
+    radial-gradient(70% 55% at 0% 100%, rgba(9, 9, 9, 0.55) 0%, rgba(9, 9, 9, 0) 100%),
+    linear-gradient(to top, rgba(9, 9, 9, 0.7) 0%, rgba(9, 9, 9, 0) 36%),
+    linear-gradient(to bottom, rgba(9, 9, 9, 0.6) 0%, rgba(9, 9, 9, 0) 22%),
+    linear-gradient(to left, rgba(9, 9, 9, 0.4) 0%, rgba(9, 9, 9, 0) 12%);
+}
+
+.cinematic__grain {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  /* Static grain avoids a continuously repainted full-screen texture. */
+}
+
+.cinematic__ui,
+.cinematic__film {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cinematic__ui {
+  opacity: 0; /* revealed by the entrance tween */
+}
+
+/* ---------------------------------------------------------------- masthead */
+
+.masthead {
+  position: absolute;
+  top: var(--gutter);
+  left: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  font: 500 11px/1.4 var(--font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-shadow: var(--halo);
+}
+
+.readout {
+  color: var(--muted);
+}
+
+.readout {
+  display: flex;
+  gap: 0.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.readout__label {
+  margin-right: 1em;
+}
+
+.readout__value {
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------------------- text */
+
+.cinematic__text {
+  position: absolute;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + 44px + var(--safe-bottom));
+  width: min(38vw, 640px);
+}
+
+.stage {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+}
+
+.stage__label {
+  display: flex;
+  gap: 0.9em;
+  margin-bottom: clamp(18px, 2.2vw, 30px);
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: var(--halo);
+}
+
+.stage__num {
+  color: var(--ink);
+}
+
+.stage__title {
+  font-size: clamp(2.2rem, 4.6vw, 5.6rem);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 0 60px rgba(0, 0, 0, 0.3);
+}
+
+.stage__line {
+  display: block;
+  padding-bottom: 0.04em;
+}
+
+/* ------------------------------------------------------ progress indicator */
+
+.progress {
+  position: absolute;
+  top: 50%;
+  right: var(--gutter);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  list-style: none;
+  font: 500 10px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--halo);
+}
+
+.progress__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.progress__num {
+  position: relative;
+  padding: 9px 0 9px 0.12em;
+  opacity: 0.55;
+  transition:
+    opacity 0.8s var(--ease),
+    color 0.8s var(--ease);
+}
+
+.progress__num::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  width: 14px;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.8s var(--ease);
+}
+
+.progress__item.is-past .progress__num {
+  opacity: 0.8;
+}
+
+.progress__item.is-active .progress__num {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.progress__item.is-active .progress__num::before {
+  transform: scaleX(1);
+}
+
+.progress__dot {
+  display: none;
+}
+
+.progress__seg {
+  position: relative;
+  width: 1px;
+  height: clamp(20px, 4vh, 40px);
+  background: rgba(245, 243, 238, 0.24);
+  overflow: hidden;
+}
+
+.progress__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  opacity: 0.8;
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+/* -------------------------------------------------------- scroll indicator */
+
+.scroll-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--gutter) + 24px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.scroll-indicator__label {
+  padding-left: 0.32em; /* balance the trailing letter-spacing */
+  font: 500 10px/1 var(--font-mono);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: var(--halo);
+}
+
+.scroll-indicator__line {
+  position: relative;
+  width: 1px;
+  height: 44px;
+  overflow: hidden;
+  background: rgba(245, 243, 238, 0.24);
+}
+
+.scroll-indicator__line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  animation: draw-line 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* ---------------------------------------------------------------- hairline */
+
+.hairline {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + var(--safe-bottom));
+  height: 1px;
+  background: rgba(245, 243, 238, 0.1);
+}
+
+.hairline__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(245, 243, 238, 0.7);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.hairline__tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 5px;
+  background: rgba(245, 243, 238, 0.35);
+}
+
+.cinematic__notice {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + 18px + var(--safe-bottom));
+  font: 500 10px/1 var(--font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------- keyframes */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes draw-line {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  45% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  55% {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* -------------------------------------------------------------- responsive */
+
+/* Tablet / narrow desktop */
+@media (max-width: 1024px) {
+  .cinematic__text {
+    width: min(52vw, 560px);
+  }
+
+  .stage__title {
+    font-size: clamp(2.2rem, 6.2vw, 4rem);
+  }
+}
+
+/* Portrait phones and tablets: the sky sits above the building, so the copy moves up there. */
+@media (max-width: 640px), (orientation: portrait) and (max-width: 1024px) {
+  .cinematic__text {
+    top: calc(var(--gutter) + 52px);
+    bottom: auto;
+    width: calc(100% - var(--gutter) * 2 - 36px);
+  }
+
+  .stage {
+    top: 0;
+    bottom: auto;
+  }
+
+  .stage__title {
+    font-size: clamp(2rem, 8.6vw, 3.6rem);
+  }
+
+  .cinematic__vignette {
+    background:
+      radial-gradient(130% 90% at 50% 55%, transparent 50%, rgba(0, 0, 0, 0.5) 100%),
+      linear-gradient(to bottom, rgba(9, 9, 9, 0.7) 0%, rgba(9, 9, 9, 0) 42%),
+      linear-gradient(to top, rgba(9, 9, 9, 0.5) 0%, rgba(9, 9, 9, 0) 22%);
+  }
+}
+
+/* Phones: the indicator collapses to dots with only the active number shown. */
+@media (max-width: 640px) {
+  :root {
+    --gutter: 18px;
+  }
+
+  .masthead,
+  .stage__label {
+    font-size: 10px;
+  }
+
+  .readout__label {
+    display: none;
+  }
+
+  .stage__label {
+    margin-bottom: 14px;
+  }
+
+  .progress {
+    font-size: 9px;
+  }
+
+  .progress__num {
+    padding: 6px 0 6px 0.12em;
+  }
+
+  .progress__num::before {
+    right: calc(100% + 6px);
+    width: 8px;
+  }
+
+  .progress__item:not(.is-active) .progress__num {
+    display: none;
+  }
+
+  .progress__item:not(.is-active) .progress__dot {
+    display: block;
+    width: 3px;
+    height: 3px;
+    margin: 9px 0;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  .progress__item.is-past .progress__dot {
+    opacity: 1;
+  }
+
+  .progress__seg {
+    height: 12px;
+  }
+
+  .scroll-indicator {
+    bottom: calc(var(--gutter) + 18px + var(--safe-bottom));
+  }
+
+  .scroll-indicator__line {
+    height: 34px;
+  }
+
+  .cinematic__notice {
+    left: var(--gutter);
+    right: auto;
+  }
+}
+
+/* Landscape phones: very little height to work with. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .cinematic__text {
+    bottom: calc(var(--gutter) + 36px);
+  }
+
+  .stage__title {
+    font-size: clamp(1.6rem, 8.5vh, 2.6rem);
+  }
+
+  .stage__label {
+    margin-bottom: 10px;
+  }
+
+  .progress__seg {
+    height: 10px;
+  }
+
+  .progress__num {
+    padding: 4px 0;
+  }
+
+  .scroll-indicator {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic__grain,
+  .scroll-indicator__line::after {
+    animation: none;
+  }
+
+  .cinematic__video,
+  .cinematic__canvas {
+    transition: none;
+    animation: none;
+  }
+}

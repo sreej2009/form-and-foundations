@@ -1,0 +1,9 @@
+node_modules
+dist
+*.log
+.DS_Store
+
+# Local-only: backup originals and generated screenshots (not used by the site)
+source-video/
+artifacts/
+public/videos/construction 1.mp4
